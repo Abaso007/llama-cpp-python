@@ -130,8 +130,7 @@ def gpt_params_parse(argv = None, params: Optional[GptParams] = None):
     parser.add_argument("--fix-prefix", type=str, default="", help="append to input when generated n_predict tokens", dest="fix_prefix")
     parser.add_argument("--out-postfix", type=str, default="", help="append to input", dest="output_postfix")
     parser.add_argument("--input-noecho", action="store_false", help="dont output the input", dest="input_echo")
-    args = parser.parse_args(argv)
-    return args
+    return parser.parse_args(argv)
 
 def gpt_random_prompt(rng):
     return [

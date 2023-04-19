@@ -110,7 +110,7 @@ specified) expect poor results""", file=sys.stderr)
 		self.n_ctx = llama_cpp.llama_n_ctx(self.ctx)
 
 		# Add a space in front of the first character to match OG llama tokenizer behavior
-		self.params.prompt = " " + self.params.prompt
+		self.params.prompt = f" {self.params.prompt}"
 
 		# Load prompt file
 		if (self.params.file):
@@ -183,9 +183,9 @@ n_keep = {self.params.n_keep}
 """, file=sys.stderr)
 
 		# determine antiprompt tokens
-		for i in self.params.antiprompt:
-			self.first_antiprompt.append(self._tokenize(i, False))
-
+		self.first_antiprompt.extend(
+			self._tokenize(i, False) for i in self.params.antiprompt
+		)
 		self.last_n_tokens = [0]*self.n_ctx #TODO: deque doesnt support slices
 
 		if (params.interactive):
@@ -288,8 +288,7 @@ n_keep = {self.params.n_keep}
 			if self.output_echo:
 				for id in self.embd:
 					if self.params.instruct:
-						for r in self.antiecho(id):
-							yield r
+						yield from self.antiecho(id)
 					else:
 						yield id
 
@@ -299,22 +298,19 @@ n_keep = {self.params.n_keep}
 
 			if (self.params.interactive and len(self.embd_inp) <= self.input_consumed):
 				# if antiprompt is present, stop
-				if (self.use_antiprompt()):
-					if True in [
-						i == self.last_n_tokens[-len(i):] 
-						for i in self.first_antiprompt
-					]:
-						break
+				if (self.use_antiprompt()) and True in [
+					i == self.last_n_tokens[-len(i) :] for i in self.first_antiprompt
+				]:
+					break
 
 				# if we are using instruction mode, and we have processed the initial prompt
 				if (self.params.interactive_start):
 					break
 
 			# end of text token
-			if len(self.embd) > 0 and self.embd[-1] == llama_cpp.llama_token_eos():
+			if self.embd and self.embd[-1] == llama_cpp.llama_token_eos():
 				if (not self.params.instruct):
-					for i in " [end of text]\n":
-						yield i
+					yield from " [end of text]\n"
 				break
 
 			# respect n_predict even if antiprompt is present

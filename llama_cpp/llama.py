@@ -205,8 +205,7 @@ class Llama:
         cols = int(n_vocab)
         rows = self.n_tokens if self.params.logits_all else 1
         logits_view = llama_cpp.llama_get_logits(self.ctx)
-        logits = [[logits_view[i * cols + j] for j in range(cols)] for i in range(rows)]
-        return logits
+        return [[logits_view[i * cols + j] for j in range(cols)] for i in range(rows)]
 
     def sample(
         self,
@@ -387,11 +386,7 @@ class Llama:
                 f"Requested tokens exceed context window of {llama_cpp.llama_n_ctx(self.ctx)}"
             )
 
-        if stop != []:
-            stop_sequences = [s.encode("utf-8") for s in stop]
-        else:
-            stop_sequences = []
-
+        stop_sequences = [s.encode("utf-8") for s in stop] if stop != [] else []
         if logprobs is not None and self.params.logits_all is False:
             raise ValueError(
                 "logprobs is not supported for models created with logits_all=False"
@@ -428,8 +423,7 @@ class Llama:
             completion_tokens.append(token)
 
             all_text = self.detokenize(completion_tokens)
-            any_stop = [s for s in stop_sequences if s in all_text]
-            if len(any_stop) > 0:
+            if any_stop := [s for s in stop_sequences if s in all_text]:
                 first_stop = any_stop[0]
                 text = all_text[: all_text.index(first_stop)]
                 finish_reason = "stop"
@@ -535,7 +529,7 @@ class Llama:
                     self.detokenize([llama_cpp.llama_token(i)]).decode("utf-8"): logprob
                     for logprob, i in sorted_logprobs[:logprobs]
                 }
-                top_logprob.update({token_str: sorted_logprobs[int(token)][0]})
+                top_logprob[token_str] = sorted_logprobs[int(token)][0]
                 top_logprobs.append(top_logprob)
             logprobs_or_none = {
                 "tokens": tokens,
@@ -761,7 +755,7 @@ class Llama:
             f'### {"Human" if message["role"] == "user" else "Assistant"}:{message["content"]}'
             for message in messages
         )
-        PROMPT = chat_history + "### Assistant:"
+        PROMPT = f"{chat_history}### Assistant:"
         PROMPT_STOP = ["### Assistant:", "### Human:"]
         completion_or_chunks = self(
             prompt=PROMPT,
